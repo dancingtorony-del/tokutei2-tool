@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>特定技能2号 移行チェックツール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* Layout: 上部に企業名と保存状態、5つのタブ。各タブは「入力（左）→ 結果（右）」の2カラム、スマホでは1カラム */
+:root{
+  --ink:#1b2433; --muted:#5b6678; --paper:#f6f7f4; --card:#ffffff; --line:#dfe3dc;
+  --accent:#0f6b5c; --accent-soft:#e2f0ec; --mark:#c2410c;
+  --ok:#15803d; --ok-bg:#e7f5ec; --warn:#b45309; --warn-bg:#fdf1de; --bad:#b91c1c; --bad-bg:#fbe7e7; --info-bg:#eef2f8;
+  --display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#e8ece6; --muted:#a3ad9f; --paper:#131815; --card:#1c2320; --line:#2f3a34;
+    --accent:#5cc4ae; --accent-soft:#1d3a33; --mark:#f59e6b;
+    --ok:#6fd38f; --ok-bg:#1b3325; --warn:#f2b45c; --warn-bg:#3a2c16; --bad:#f08a8a; --bad-bg:#3a1d1d; --info-bg:#1e2733;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#e8ece6; --muted:#a3ad9f; --paper:#131815; --card:#1c2320; --line:#2f3a34;
+  --accent:#5cc4ae; --accent-soft:#1d3a33; --mark:#f59e6b;
+  --ok:#6fd38f; --ok-bg:#1b3325; --warn:#f2b45c; --warn-bg:#3a2c16; --bad:#f08a8a; --bad-bg:#3a1d1d; --info-bg:#1e2733;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.35;margin:0}
+.num{font-variant-numeric:tabular-nums}
+header.top{border-bottom:1px solid var(--line);background:var(--card)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:20px}
+.brand small{display:block;color:var(--muted);font-size:12px;letter-spacing:.06em}
+.brand h1{font-size:24px;font-weight:900}
+.brand h1 span{color:var(--accent)}
+.client{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-bottom:6px}
+.client input{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 10px;width:13em}
+.save-state{font-size:12px;color:var(--muted)}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;width:100%;margin-top:6px}
+nav.tabs a{flex:0 0 auto;text-decoration:none;color:var(--muted);font-family:var(--display);font-weight:700;padding:10px 14px;border-bottom:3px solid transparent;font-size:15px}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+main{padding:24px 0 48px}
+section.view{display:none}
+section.view.on{display:block}
+.lead{color:var(--muted);max-width:70ch;margin:6px 0 18px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:20px;align-items:start}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
+.card h2{font-size:18px;margin-bottom:10px}
+.card h3{font-size:15px;margin:16px 0 6px}
+.card h3:first-child{margin-top:0}
+.sticky{position:sticky;top:12px}
+@media (max-width:900px){.sticky{position:static}}
+.btn{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#0d1512}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#0d1512}}
+.btn.small{padding:4px 10px;font-size:13px}
+.row-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.note{font-size:13px;color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.pill.info{background:var(--info-bg);color:var(--muted)}
+.step{display:flex;gap:12px;align-items:flex-start}
+.step .no{flex:0 0 2em;height:2em;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:900}
+:root[data-theme="dark"] .step .no{color:#0d1512}
+.say{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.say div{padding:10px 14px;border-top:1px solid var(--line);font-size:14px}
+.say .hd{font-weight:700;font-family:var(--display);border-top:none}
+.say .ok-c{background:var(--ok-bg)}
+.say .ng-c{background:var(--bad-bg)}
+@media (max-width:640px){.say{grid-template-columns:1fr}}
+ul.tick{margin:6px 0 0;padding-left:1.2em}
+ul.tick li{margin:3px 0}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--display);font-size:28px;font-weight:900;line-height:1.1}
+.stat span{font-size:13px;color:var(--muted)}
+
+/* 診断 */
+.q{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.q:first-of-type{border-top:none}
+.q .no{font-family:var(--display);font-weight:700;color:var(--muted);text-align:right}
+.q .cat{font-size:11px;color:var(--accent);font-weight:700;display:block}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;border:none;background:transparent;color:var(--muted);padding:6px 10px;cursor:pointer;min-width:3.4em}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"][data-v="2"]{background:var(--ok-bg);color:var(--ok);font-weight:700}
+.seg button[aria-pressed="true"][data-v="1"]{background:var(--warn-bg);color:var(--warn);font-weight:700}
+.seg button[aria-pressed="true"][data-v="0"]{background:var(--bad-bg);color:var(--bad);font-weight:700}
+@media (max-width:560px){.q{grid-template-columns:2em 1fr}.q .seg{grid-column:2}}
+.score{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.score .big{font-family:var(--display);font-size:56px;font-weight:900;line-height:1}
+.score .of{color:var(--muted)}
+.rank{font-family:var(--display);font-weight:900;font-size:20px;margin:6px 0 2px}
+.bars{display:grid;gap:8px;margin-top:8px}
+.bar{display:grid;grid-template-columns:8.5em minmax(0,1fr) 3.2em;gap:8px;align-items:center;font-size:13px}
+.bar .track{height:10px;background:var(--line);border-radius:6px;overflow:hidden}
+.bar .fill{height:100%;background:var(--accent);border-radius:6px}
+.bar .fill.low{background:var(--mark)}
+ol.actions{margin:6px 0 0;padding-left:1.3em}
+ol.actions li{margin:4px 0}
+
+/* 候補者チェック */
+fieldset{border:none;margin:0;padding:0}
+legend{font-family:var(--display);font-weight:700;font-size:15px;margin:18px 0 8px;display:flex;gap:8px;align-items:center}
+legend .tag{font-size:11px;color:#fff;background:var(--accent);border-radius:4px;padding:1px 6px}
+:root[data-theme="dark"] legend .tag{color:#0d1512}
+fieldset:first-of-type legend{margin-top:0}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+@media (max-width:560px){.fields{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:700}
+label.f input,label.f select{font:inherit;font-weight:400;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+label.f .hint{font-weight:400;font-size:12px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:14px;margin-top:6px}
+.chk input{margin-top:5px;accent-color:var(--accent)}
+.sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 20px}
+@media (max-width:560px){.sliders{grid-template-columns:1fr}}
+.sl{display:grid;grid-template-columns:minmax(0,1fr) 7em 1.6em;gap:8px;align-items:center;font-size:13px}
+.sl input{width:100%;accent-color:var(--accent)}
+.sl output{font-weight:700;text-align:right}
+.sl.low output{color:var(--bad)}
+.axis-h{font-size:13px;font-weight:700;margin:12px 0 4px;display:flex;justify-content:space-between}
+details.settings{margin-top:14px;border:1px dashed var(--line);border-radius:8px;padding:8px 12px}
+details.settings summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--muted)}
+.verdicts{display:grid;gap:10px}
+.verdict{border:1px solid var(--line);border-left-width:6px;border-radius:8px;padding:10px 12px;background:var(--card)}
+.verdict.ok{border-left-color:var(--ok)}
+.verdict.warn{border-left-color:var(--warn)}
+.verdict.bad{border-left-color:var(--bad)}
+.verdict .t{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.verdict .t b{font-family:var(--display)}
+.verdict p{margin:4px 0 0;font-size:13.5px}
+.verdict ul{margin:4px 0 0;padding-left:1.2em;font-size:13.5px}
+.verdict .talk{margin-top:6px;font-size:13px;background:var(--info-bg);border-radius:6px;padding:6px 8px}
+.alerts{display:grid;gap:8px;margin-bottom:10px}
+.alert{border-radius:8px;padding:8px 12px;font-size:13.5px}
+.alert.warn{background:var(--warn-bg);color:var(--ink)}
+.alert.bad{background:var(--bad-bg);color:var(--ink)}
+.alert b{color:inherit}
+.timeline{margin:6px 0 4px}
+.timeline svg{width:100%;height:auto;display:block}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13.5px;margin-top:6px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:700}
+
+/* 一覧 */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:1080px;font-size:13.5px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--muted);background:var(--paper)}
+td input,td select{font:inherit;width:100%;min-width:6.5em;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
+td.calc{white-space:nowrap}
+.del{font:inherit;border:none;background:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1}
+
+/* 制度 */
+.rules{display:grid;gap:10px}
+details.rule{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+details.rule summary{cursor:pointer;font-family:var(--display);font-weight:700;display:flex;gap:10px;align-items:baseline}
+details.rule summary .n{color:var(--accent);font-variant-numeric:tabular-nums;min-width:1.8em}
+details.rule p{margin:8px 0 0;max-width:72ch}
+details.rule .src{font-size:13px}
+
+/* 保存 */
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog textarea{width:100%;min-height:160px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;padding:18px 0 30px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 16px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <small>飲食料品製造業向け　2号移行と等級・評価制度づくりの支援ツール</small>
+      <h1>特定技能<span>2号</span> 移行チェックツール</h1>
+    </div>
+    <div class="client">
+      <label for="g-client" class="note">企業様名</label><input id="g-client" type="text" placeholder="例：○○食品 ○○工場">
+      <button class="btn small" id="g-data" type="button">データの保存・読み込み</button>
+      <span class="save-state" id="g-save">　</span>
+    </div>
+    <nav class="tabs" aria-label="ツールの切り替え">
+      <a href="#start" data-view="start">はじめに</a>
+      <a href="#diagnosis" data-view="diagnosis">① 会社の現状診断</a>
+      <a href="#candidate" data-view="candidate">② 候補者を1人チェック</a>
+      <a href="#roster" data-view="roster">③ 候補者一覧と期限</a>
+      <a href="#rules" data-view="rules">④ 制度と市場データ</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- はじめに -->
+<section class="view" id="view-start" aria-labelledby="h-start">
+  <h2 id="h-start" style="font-size:22px">はじめに：打合せでの使い方</h2>
+  <p class="lead">このツールは、2号への移行を「受験できるか」「会社として管理役を任せられるか」「在留申請の準備が整っているか」の3つに分けて確認するためのものです。結果は判断の材料で、在留許可を約束するものではありません。</p>
+  <div class="grid3">
+    <div class="card step"><span class="no">1</span><div><h3>事前に聞く（5分）</h3><p class="note" style="margin:4px 0 0">ヒアリングシートで、候補者ごとに下の6点を聞いておきます。分からない項目は空欄のままで判定できます。</p></div></div>
+    <div class="card step"><span class="no">2</span><div><h3>打合せで見せる（20分）</h3><p class="note" style="margin:4px 0 0">①で会社の準備度を一緒に回答し、弱い分野を確認します。次に③の一覧で期限が近い人を見つけ、②で1人ずつ詳しく見ます。</p></div></div>
+    <div class="card step"><span class="no">3</span><div><h3>打合せ後に送る（5分）</h3><p class="note" style="margin:4px 0 0">各画面の「コピー」で結果を議事録・メールに貼ります。「データの保存・読み込み」で入力内容を残し、次回はそこから続けます。</p></div></div>
+  </div>
+
+  <div class="grid2" style="margin-top:20px">
+    <div class="card">
+      <h2>事前に聞いておく6点（候補者ごと）</h2>
+      <ul class="tick">
+        <li>特定技能1号を始めた日（在留カード・許可の通知で確認）</li>
+        <li>1号の前に「特定活動（移行準備）」の期間があったか</li>
+        <li>班長・ライン長など、管理役を始めた日（辞令の日付）</li>
+        <li>前の会社での管理役の経験（証明書をもらえるか）</li>
+        <li>2号評価試験の受験歴と得点（結果通知書）</li>
+        <li>同じ事業所・部署で指導している人数と名前</li>
+      </ul>
+      <p class="note">あわせて、報酬が同じ職位の日本人と同等以上か、協議会に加入しているか、キャリアアッププランを書面で説明したかも確認します。</p>
+    </div>
+    <div class="card">
+      <h2>判定の色の意味</h2>
+      <ul class="tick" style="list-style:none;padding-left:0">
+        <li><span class="pill ok">緑</span> 条件を満たしている。次の手続きに進める</li>
+        <li><span class="pill warn">黄</span> 条件付き・あと一歩。期限や不足を先に確認する</li>
+        <li><span class="pill bad">赤</span> このままでは進めない。すぐに対策の相談が必要</li>
+        <li><span class="pill info">灰</span> 未入力。聞き取りが必要</li>
+      </ul>
+      <p class="note">社内評価の基準（スキル60点＋マインド40点、総合70点以上かつ全項目3点以上）は社内の例です。企業様の制度に合わせて②の「社内基準の設定」で変えられます。</p>
+    </div>
+  </div>
+
+  <h2 style="font-size:18px;margin:24px 0 10px">お客様への伝え方</h2>
+  <div class="say">
+    <div class="hd ok-c">こう伝える</div><div class="hd ng-c">こうは言わない</div>
+    <div>「この条件がそろえば、2号への申請の準備ができます。許可するかは入管の審査です」</div><div>「この判定なら2号になれます」「審査は通ります」</div>
+    <div>「試験の合格と在留の許可は別です。合格後に入管へ申請します」</div><div>「試験に受かれば2号です」</div>
+    <div>「勤続年数ではなく、管理役としての経験を2年数えます」</div><div>「5年働いているので受験できます」</div>
+    <div>「実際にやっている業務を、そのまま誓約書に書きます」</div><div>「申請のときだけ班長ということにしましょう」</div>
+    <div>「書類の作成は提携の行政書士が担当します」</div><div>「誓約書や申請書はこちらで作ります」（行政書士の業務）</div>
+    <div>「期限が近い方は、早めに個別に相談しましょう」</div><div>「勉強を続ければ期限は延ばせます」（6年特例は条件付き）</div>
+  </div>
+</section>
+
+<!-- ① 診断 -->
+<section class="view" id="view-diagnosis" aria-labelledby="h-diag">
+  <h2 id="h-diag" style="font-size:22px">会社の現状診断（15問）</h2>
+  <p class="lead">2号への移行と人事制度の準備がどこまで進んでいるかを30点満点で確認します。「はい」2点、「一部」1点、「いいえ」0点です。もう一度押すと回答を取り消せます。</p>
+  <div class="grid2">
+    <div class="card" id="qlist"></div>
+    <div class="card sticky" aria-live="polite">
+      <div class="score"><span class="big num" id="d-score">0</span><span class="of">／30点</span><span class="pill info" id="d-count">0／15問 回答</span></div>
+      <div class="rank" id="d-rank"></div>
+      <div class="note" id="d-rank-note"></div>
+      <h3>分野ごとの達成率</h3>
+      <div class="bars" id="d-bars"></div>
+      <h3>優先して取り組むこと</h3>
+      <ol class="actions" id="d-actions"></ol>
+      <div class="row-btns">
+        <button class="btn primary" id="d-copy" type="button">結果をコピー</button>
+        <button class="btn" id="d-reset" type="button">回答をすべて消す</button>
+        <button class="btn" id="d-example" type="button">記入例を入れる</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ② 候補者 -->
+<section class="view" id="view-candidate" aria-labelledby="h-cand">
+  <h2 id="h-cand" style="font-size:22px">候補者を1人チェック</h2>
+  <p class="lead">分からない項目は空欄のままで構いません。結果の「灰色」が、次に聞き取ることです。</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="fields" style="margin-bottom:6px">
+        <label class="f" for="c-name">氏名（打合せでは「社員A」などでも可）<input id="c-name" type="text"></label>
+        <div class="row-btns" style="align-items:flex-end;margin:0">
+          <button class="btn" id="c-clear" type="button">入力を消す</button>
+          <button class="btn" id="c-example" type="button">記入例を入れる</button>
+        </div>
+      </div>
+
+      <fieldset><legend><span class="tag">A</span>1号の期限</legend>
+      <div class="fields">
+        <label class="f" for="c-start">特定技能1号の開始日<input id="c-start" type="date"><span class="hint">1号の許可を受けた日</span></label>
+        <label class="f" for="c-tokkatsu">1号の前の「特定活動」の期間（か月）<input id="c-tokkatsu" type="number" min="0" max="24" step="1"><span class="hint">移行準備の特定活動は通算に含まれます</span></label>
+        <label class="f" for="c-excl">通算から除外を申請する休業（か月）<input id="c-excl" type="number" min="0" max="36" step="1"><span class="hint">産休・育休、1か月を超える病気・けがの休業など</span></label>
+      </div></fieldset>
+
+      <fieldset><legend><span class="tag">B</span>管理役（班長など）の経験</legend>
+      <div class="fields">
+        <label class="f" for="c-mgmt">今の会社で管理役を始めた日<input id="c-mgmt" type="date"><span class="hint">辞令の日付。複数の作業員を指導し、工程を管理している</span></label>
+        <label class="f" for="c-prior">前の会社での管理役の経験（か月）<input id="c-prior" type="number" min="0" max="120" step="1"><span class="hint">前の会社の実務経験証明書が出せる分だけ</span></label>
+        <label class="f" for="c-gap">管理役を中断した期間（か月）<input id="c-gap" type="number" min="0" max="60" step="1"><span class="hint">休職などで管理業務をしていない期間</span></label>
+      </div></fieldset>
+
+      <fieldset><legend><span class="tag">C</span>2号評価試験</legend>
+      <div class="fields">
+        <label class="f" for="c-exam">受験の状況<select id="c-exam">
+          <option value="none">まだ受けていない</option>
+          <option value="booked">予約済み</option>
+          <option value="pass">合格した</option>
+          <option value="fail">不合格だった</option>
+        </select></label>
+        <label class="f" for="c-score">得点（200点満点・合格130点）<input id="c-score" type="number" min="0" max="200" step="1"><span class="hint">不合格のときに入力</span></label>
+        <label class="f" for="c-examdate">受験日（予定日）<input id="c-examdate" type="date"></label>
+      </div>
+      <label class="chk" for="c-basic"><input id="c-basic" type="checkbox"> 受験の基本条件を確認した（試験日に在留資格がある・17歳以上・対象国のパスポート・企業マイページ登録）</label>
+      </fieldset>
+
+      <fieldset><legend><span class="tag">D</span>職場の体制と書類</legend>
+      <div class="fields">
+        <label class="f" for="c-trainees">指導している人数（同じ事業所・部署）<input id="c-trainees" type="number" min="0" max="30" step="1"><span class="hint">飲食料品製造業は2名以上が必要</span></label>
+        <label class="f" for="c-apply">在留資格の変更を申請する予定日<input id="c-apply" type="date"><span class="hint">空欄なら自動で見込み日を使います</span></label>
+      </div>
+      <label class="chk" for="c-temp"><input id="c-temp" type="checkbox"> 人数が足りないのは一時的（採用中・離職・休職など）</label>
+      <label class="chk" for="c-duty"><input id="c-duty" type="checkbox"> 1号・実習生とは違う職務（指導・工程管理）を実際に担当している</label>
+      <label class="chk" for="c-pay"><input id="c-pay" type="checkbox"> 報酬は同じ職位の日本人と同等以上</label>
+      <label class="chk" for="c-council"><input id="c-council" type="checkbox"> 食品産業特定技能協議会に加入している</label>
+      <label class="chk" for="c-plan"><input id="c-plan" type="checkbox"> キャリアアッププランを雇用契約の前に書面で説明する準備がある</label>
+      </fieldset>
+
+      <fieldset><legend><span class="tag">E</span>社内評価（各1〜5点）</legend>
+      <p class="note" style="margin:0">社内基準の例です（制度上の要件ではありません）。年休の取得や体調不良の申告は減点しません。</p>
+      <div class="axis-h"><span>スキル（業務能力）</span><span>平均 <b class="num" id="c-skill">-</b></span></div>
+      <div class="sliders" id="skill-sl"></div>
+      <div class="axis-h"><span>マインド（勤務姿勢・勤怠）</span><span>平均 <b class="num" id="c-mind">-</b></span></div>
+      <div class="sliders" id="mind-sl"></div>
+      <details class="settings"><summary>社内基準の設定（企業様ごとに変更できます）</summary>
+        <div class="fields" style="margin-top:8px">
+          <label class="f" for="s-ws">スキルの配点<input id="s-ws" type="number" min="0" max="100" step="5"></label>
+          <label class="f" for="s-wm">マインドの配点<input id="s-wm" type="number" min="0" max="100" step="5"></label>
+          <label class="f" for="s-pass">推薦の目安（総合点）<input id="s-pass" type="number" min="0" max="100" step="1"></label>
+          <label class="f" for="s-min">全項目の最低点<input id="s-min" type="number" min="1" max="5" step="1"></label>
+          <label class="f" for="s-margin">期限の余裕の目安（か月）<input id="s-margin" type="number" min="0" max="24" step="1"><span class="hint">試験と申請にかかる期間を見込んだ社内の目安</span></label>
+        </div>
+        <div class="row-btns"><button class="btn small" id="s-reset" type="button">初期値に戻す</button></div>
+      </details>
+      </fieldset>
+    </div>
+
+    <div class="sticky" style="display:grid;gap:16px" aria-live="polite">
+      <div class="card">
+        <h2 id="r-title">判定結果</h2>
+        <div class="alerts" id="r-alerts"></div>
+        <div class="timeline" id="r-timeline"></div>
+        <dl class="kv" id="r-kv"></dl>
+      </div>
+      <div class="verdicts" id="r-verdicts"></div>
+      <div class="card">
+        <h3>次にやること</h3>
+        <ol class="actions" id="r-actions"></ol>
+        <div class="row-btns">
+          <button class="btn primary" id="c-copy" type="button">判定をコピー</button>
+          <button class="btn" id="c-toroster" type="button">一覧に追加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ③ 一覧 -->
+<section class="view" id="view-roster" aria-labelledby="h-roster">
+  <h2 id="h-roster" style="font-size:22px">候補者一覧と期限</h2>
+  <p class="lead">候補者全員の期限を並べて、急ぐ人を見つけます。指導対象者は名前を「、」で区切って入力すると、人数と重複を確認します。重複は合理的な理由があれば認められる場合があるため「要確認」として表示します。行の「詳しく」で②に読み込めます。</p>
+  <div class="row-btns" style="margin:0 0 10px">
+    <button class="btn" id="ro-sort" type="button">余裕が少ない順に並べる</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>氏名</th><th>1号の開始日</th><th>管理役の開始日</th><th>前職の管理経験（か月）</th><th>2号試験</th><th>指導対象者（、区切り）</th>
+        <th>実務2年の到達日</th><th>1号の期限の目安</th><th>余裕</th><th>期限の判定</th><th>指導対象者</th><th></th>
+      </tr></thead>
+      <tbody id="ro-body"></tbody>
+    </table>
+  </div>
+  <div class="row-btns">
+    <button class="btn primary" id="ro-add" type="button">候補者を追加</button>
+    <button class="btn" id="ro-copy" type="button">表をコピー（Excelに貼り付け）</button>
+    <button class="btn" id="ro-example" type="button">記入例を入れる</button>
+    <button class="btn" id="ro-clear" type="button">一覧を空にする</button>
+  </div>
+  <p class="note">一覧の期限は「1号の開始日＋5年」の目安です（特定活動・休業の調整は②で行います）。正確な通算期間は出入国記録の開示請求で確認できます。</p>
+</section>
+
+<!-- ④ 制度 -->
+<section class="view" id="view-rules" aria-labelledby="h-rules">
+  <h2 id="h-rules" style="font-size:22px">制度と市場データ（飲食料品製造業）</h2>
+  <p class="lead">一次資料で確認した内容です（確認日：2026年11月17日）。制度は改正が続いているため、申請の前に必ず最新の資料で確認してください。</p>
+  <div class="grid3" style="margin-bottom:8px">
+    <div class="card stat"><span>特定技能2号の在留者数（全分野・2026年6月末）</span><b class="num">18,295人</b><span>2025年末から2倍以上に増加</span></div>
+    <div class="card stat"><span>うち飲食料品製造業の2号（2026年6月末）</span><b class="num">4,703人</b><span>同分野の1号は100,769人。2号はまだ少数</span></div>
+    <div class="card stat"><span>飲食料品製造業2号試験の合格率（国内・初期の実施回）</span><b class="num">36.3%</b><span>受験408人・合格148人。再受験を見込んだ計画が必要</span></div>
+  </div>
+  <p class="note" style="margin-bottom:16px">出典：<a href="https://kumanichi.com/articles/2047152" target="_blank" rel="noopener">共同通信（熊本日日新聞）2026年6月末の在留外国人数</a>、<a href="https://www.gaikokujin-press.com/archives/3515" target="_blank" rel="noopener">外国人プレス（入管庁速報値）</a>、<a href="https://dsg.or.jp/column/working/8343" target="_blank" rel="noopener">DSG（令和8年6月末速報値）</a>、<a href="https://www.maff.go.jp/j/shokusan/sanki/soumu/attach/pdf/kyougikai-105.pdf" target="_blank" rel="noopener">農林水産省 食品産業特定技能協議会資料（令和6年4月時点）</a>。2026年度から国内試験はCBT方式（会場のパソコンで受験）に変わりました（<a href="https://www.reishokukyo.or.jp/wp-content/uploads/2025/12/f51d89b1aadefb12c34d24157009c9d5-1.pdf" target="_blank" rel="noopener">OTAFFのお知らせ</a>）。</p>
+  <div class="rules" id="rules"></div>
+</section>
+</main>
+
+<dialog id="dlg" aria-labelledby="dlg-h">
+  <h2 id="dlg-h" style="font-size:18px">データの保存・読み込み</h2>
+  <p class="note" id="dlg-auto"></p>
+  <h3 style="font-size:15px;margin:14px 0 6px">書き出す</h3>
+  <p class="note" style="margin:0 0 6px">下の文字をコピーして、社内の共有フォルダやメモに保存します。次回はこの文字を「読み込む」に貼り付けると続きから使えます。</p>
+  <textarea id="dlg-out" readonly aria-label="書き出したデータ"></textarea>
+  <div class="row-btns"><button class="btn primary" id="dlg-copy" type="button">コピー</button></div>
+  <h3 style="font-size:15px;margin:14px 0 6px">読み込む</h3>
+  <textarea id="dlg-in" aria-label="読み込むデータ" placeholder="書き出した文字を貼り付けてください"></textarea>
+  <p class="note" id="dlg-err" role="alert"></p>
+  <div class="row-btns">
+    <button class="btn primary" id="dlg-load" type="button">読み込む</button>
+    <button class="btn" id="dlg-new" type="button">新しい企業様で始める（すべて消す）</button>
+    <button class="btn" id="dlg-close" type="button">閉じる</button>
+  </div>
+</dialog>
+
+<footer>
+  <div class="wrap">
+    このツールは制度設計の参考として使うためのもので、在留資格の許可を保証するものではありません。申請書類（誓約書など）の作成は申請取次の資格がある行政書士に、就業規則・賃金規程は社会保険労務士に相談してください。入力内容はこのブラウザの中だけで計算され、外部には送信されません。
+  </div>
+</footer>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id);};
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];});}
+function toast(msg){var t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove("show");},1800);}
+function copyText(txt){
+  function fallback(){try{var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();var ok=document.execCommand("copy");ta.remove();toast(ok?"コピーしました":"コピーできませんでした。手動で選択してください");}catch(e){toast("コピーできませんでした");}}
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){toast("コピーしました");},fallback);}else fallback();}catch(e){fallback();}
+}
+function num(v){var n=parseFloat(v);return isNaN(n)?0:n;}
+
+/* ---------- 日付 ---------- */
+function parseD(s){if(!s)return null;var p=String(s).split("-");if(p.length!==3)return null;var d=new Date(+p[0],+p[1]-1,+p[2]);return isNaN(d.getTime())?null:d;}
+function addMonths(d,m){var y=d.getFullYear(),mo=d.getMonth()+m,day=d.getDate();var last=new Date(y,mo+1,0).getDate();return new Date(y,mo,Math.min(day,last));}
+function addDays(d,n){var x=new Date(d.getTime());x.setDate(x.getDate()+n);return x;}
+function fmt(d){if(!d)return "—";return d.getFullYear()+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+String(d.getDate()).padStart(2,"0");}
+function monthsBetween(a,b){return Math.round((b-a)/86400000/30.4);}
+function maxD(a,b){if(!a)return b;if(!b)return a;return a>b?a:b;}
+var TODAY=(function(){var n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate());})();
+var B1_DATE=new Date(2027,3,1);
+
+/* ---------- 計算（ツールの中心） ---------- */
+/* 1号の期限の目安：開始日＋60か月＋除外月数−特定活動の月数−1日 */
+function limitDate(start,excl,tokkatsu){return addDays(addMonths(start,60+(excl||0)-(tokkatsu||0)),-1);}
+/* 実務2年の到達日：管理役開始日＋(24−前職−0)か月＋中断月数。前職だけで24か月以上なら「到達済み」 */
+function reachDate(mgmt,prior,gap){
+  prior=prior||0;gap=gap||0;
+  if(prior>=24&&!mgmt)return {date:null,done:true};
+  if(!mgmt)return {date:null,done:false};
+  var need=Math.max(0,24-prior);return {date:addMonths(mgmt,need+gap),done:false};
+}
+function expMonthsNow(mgmt,prior,gap){var m=mgmt?Math.max(0,Math.floor((TODAY-mgmt)/86400000/30.44)-(gap||0)):0;return m+(prior||0);}
+function deadlineVerdict(margin,th){
+  if(margin==null)return {cls:"info",txt:"未入力"};
+  if(margin>=th)return {cls:"ok",txt:"間に合う見込み"};
+  if(margin>=0)return {cls:"warn",txt:"要注意（試験・申請の期間が短い）"};
+  return {cls:"bad",txt:"間に合わない（すぐに相談）"};
+}
+
+/* ---------- 状態 ---------- */
+var DEF_SET={ws:60,wm:40,pass:70,min:3,margin:6};
+var SKILL=["担当工程数（多能工）","品質（自分の不良・ミス）","生産性（標準時間の達成率）","指導・教育","工程管理（配置・記録・異常時の判断）","日本語（指示・報告）"];
+var MIND=["勤怠（年休は出勤扱い）","勤務姿勢","規律・衛生・安全","協調性・信頼","責任感・報告"];
+var QS=[
+ ["方針・体制","2号へ移行させる人の条件（方針）が社内で決まっている","経営層と「誰を2号にするか」の方針を決める"],
+ ["方針・体制","外国人材の人事制度を担当する部署・担当者が決まっている","担当者を決め、本社と拠点の役割を分ける"],
+ ["方針・体制","拠点ごとに判断がばらつかない、全社共通のルールがある","全社共通の基準を作り、拠点はそれに沿って運用する"],
+ ["等級・処遇","1号と2号を区別した等級（役職）がある","等級テーブルで1号と2号の線引きを作る"],
+ ["等級・処遇","等級ごとの給与レンジ・手当が決まっている","号俸表と役職手当を設定する"],
+ ["等級・処遇","同じ職位の日本人社員と報酬を比べて説明できる","比較対象の日本人の等級を決め、差がないか確認する"],
+ ["評価","定量（勤怠・品質・生産性など）の評価基準がある","数字で測れる項目を決め、点数の基準を作る"],
+ ["評価","定性（姿勢・協調性など）の評価に、点数ごとの行動の例がある","点数ごとの行動例を書き、評価のぶれを抑える"],
+ ["評価","評価者が2名以上いて、評価の根拠を記録している","所属長＋人事の2名評価と、根拠の記入欄を設ける"],
+ ["2号の要件対応","2号の候補者を、班長・ライン長などに辞令で任命している","候補者を早めに任命し、辞令（職務命令書）を残す"],
+ ["2号の要件対応","実習生・1号と2号の職務の違いを、書面で説明できる","職務分掌表を作る（誓約書の記載のもとになる）"],
+ ["2号の要件対応","候補者ごとに、同じ事業所・部署の指導対象者を2名以上割り当てている","指導対象者の割り当て表を作り、人数と重複を確認する"],
+ ["記録・期限管理","指導の記録（誰に・何を・何時間）を毎月残している","指導記録の様式を決め、月1回確認する"],
+ ["記録・期限管理","1号の通算期限と、実務2年に届く日を候補者ごとに管理している","候補者一覧で、期限から逆算して任命時期を決める"],
+ ["記録・期限管理","外国人本人に、評価・昇格の基準を母国語などで説明している","説明資料を用意し、評価面談で伝える"]
+];
+var CATS=["方針・体制","等級・処遇","評価","2号の要件対応","記録・期限管理"];
+var EX_DIAG=[2,1,0,2,1,0,2,2,1,0,0,0,1,0,2];
+var EX_CAND={name:"社員A（記入例）",start:"2024-04-01",tokkatsu:"",excl:"",mgmt:"2026-02-01",prior:"",gap:"",exam:"none",score:"",examdate:"",basic:true,trainees:"2",apply:"",temp:false,duty:true,pay:true,council:true,plan:false,skill:[4,4,3,4,3,3],mind:[5,4,4,4,4]};
+var EMPTY_CAND={name:"",start:"",tokkatsu:"",excl:"",mgmt:"",prior:"",gap:"",exam:"none",score:"",examdate:"",basic:false,trainees:"",apply:"",temp:false,duty:false,pay:false,council:false,plan:false,skill:[3,3,3,3,3,3],mind:[3,3,3,3,3]};
+var EX_ROSTER=[
+ {name:"社員A（記入例）",start:"2024-04-01",mgmt:"2026-02-01",prior:"",exam:"none",trainees:"実習生X、1号社員Y"},
+ {name:"社員B（記入例）",start:"2023-10-01",mgmt:"2026-06-01",prior:"",exam:"none",trainees:"実習生Z、1号社員Y"},
+ {name:"社員C（記入例）",start:"2022-11-01",mgmt:"2026-04-01",prior:"",exam:"fail",trainees:"実習生W"},
+ {name:"社員D（記入例・転職者）",start:"2025-04-01",mgmt:"2025-10-01",prior:"18",exam:"none",trainees:"1号社員V、育成就労U"}
+];
+function clone(o){return JSON.parse(JSON.stringify(o));}
+var S={v:2,client:"",diag:EX_DIAG.slice(),cand:clone(EX_CAND),roster:clone(EX_ROSTER),set:clone(DEF_SET)};
+
+/* 保存（同じブラウザ内の下書き） */
+var KEY="tokutei2-tool-v2",canStore=false;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));canStore=true;$("g-save").textContent="このブラウザに自動保存しています";}catch(e){canStore=false;$("g-save").textContent="自動保存できない環境です（書き出しで保存してください）";}}
+function load(){try{var raw=localStorage.getItem(KEY);if(raw){var o=JSON.parse(raw);if(o&&o.v===2)S=merge(o);}canStore=true;}catch(e){canStore=false;}}
+function merge(o){var b={v:2,client:"",diag:QS.map(function(){return null;}),cand:clone(EMPTY_CAND),roster:[],set:clone(DEF_SET)};
+  if(typeof o.client==="string")b.client=o.client;
+  if(Array.isArray(o.diag)&&o.diag.length===15)b.diag=o.diag.map(function(x){return (x===0||x===1||x===2)?x:null;});
+  if(o.cand&&typeof o.cand==="object"){Object.keys(EMPTY_CAND).forEach(function(k){if(o.cand[k]!==undefined)b.cand[k]=o.cand[k];});
+    if(!Array.isArray(b.cand.skill)||b.cand.skill.length!==6)b.cand.skill=EMPTY_CAND.skill.slice();
+    if(!Array.isArray(b.cand.mind)||b.cand.mind.length!==5)b.cand.mind=EMPTY_CAND.mind.slice();}
+  if(Array.isArray(o.roster))b.roster=o.roster.filter(function(r){return r&&typeof r==="object";}).map(function(r){return {name:String(r.name||""),start:String(r.start||""),mgmt:String(r.mgmt||""),prior:String(r.prior||""),exam:EXAMS[r.exam]?r.exam:"none",trainees:String(r.trainees||"")};});
+  if(o.set&&typeof o.set==="object")Object.keys(DEF_SET).forEach(function(k){if(typeof o.set[k]==="number")b.set[k]=o.set[k];});
+  return b;}
+
+/* ---------- ① 診断 ---------- */
+function renderQs(){
+  $("qlist").innerHTML=QS.map(function(q,i){
+    return '<div class="q"><span class="no num">'+(i+1)+'</span><div><span class="cat">'+esc(q[0])+'</span>'+esc(q[1])+'</div>'+
+      '<div class="seg" role="group" aria-label="質問'+(i+1)+'の回答">'+[["2","はい"],["1","一部"],["0","いいえ"]].map(function(o){return '<button type="button" data-q="'+i+'" data-v="'+o[0]+'" aria-pressed="'+(S.diag[i]===+o[0])+'">'+o[1]+'</button>';}).join("")+'</div></div>';
+  }).join("");
+}
+function diagResult(){
+  var a=S.diag,answered=a.filter(function(x){return x!=null;}).length,score=a.reduce(function(s,x){return s+(x||0);},0),rank,note;
+  if(answered===0){rank="回答すると表示されます";note="";}
+  else if(score>=24){rank="A：申請の準備に入れる";note="制度の土台はできています。候補者ごとの期限と記録を確認しましょう。";}
+  else if(score>=16){rank="B：一部の整備が必要";note="足りない分野を補えば、申請の準備に進めます。";}
+  else if(score>=8){rank="C：制度づくりから必要";note="等級・評価・職務分掌を整えるところから始めましょう。";}
+  else{rank="D：方針決めから必要";note="まず「誰を2号にするか」の方針を経営層と決めましょう。";}
+  var cats=CATS.map(function(c){var s=0;QS.forEach(function(q,i){if(q[0]===c)s+=(a[i]||0);});return [c,s];});
+  var acts=[];QS.forEach(function(q,i){if(a[i]!=null&&a[i]<2)acts.push([a[i],q[2]]);});acts.sort(function(x,y){return x[0]-y[0];});
+  if(answered>0&&answered<15)note=(note?note+" ":"")+"未回答が"+(15-answered)+"問あります。";
+  return {answered:answered,score:score,rank:rank,note:note,cats:cats,acts:acts};
+}
+function renderDiag(){
+  var r=diagResult();
+  $("d-score").textContent=r.score;$("d-count").textContent=r.answered+"／15問 回答";$("d-rank").textContent=r.rank;$("d-rank-note").textContent=r.note;
+  $("d-bars").innerHTML=r.cats.map(function(c){var p=Math.round(c[1]/6*100);return '<div class="bar"><span>'+esc(c[0])+'</span><span class="track"><span class="fill'+(p<50?' low':'')+'" style="width:'+p+'%"></span></span><span class="num" style="text-align:right">'+p+'%</span></div>';}).join("");
+  $("d-actions").innerHTML=r.acts.length?r.acts.map(function(a){return '<li><span class="pill '+(a[0]===0?'bad':'warn')+'">'+(a[0]===0?'いいえ':'一部')+'</span> '+esc(a[1])+'</li>';}).join(""):'<li class="note">「いいえ」「一部」の項目はありません。</li>';
+}
+$("qlist").addEventListener("click",function(e){var b=e.target.closest("button[data-q]");if(!b)return;var i=+b.dataset.q,v=+b.dataset.v;S.diag[i]=(S.diag[i]===v)?null:v;
+  b.parentNode.querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed",String(S.diag[i]===+x.dataset.v));});renderDiag();save();});
+$("d-reset").addEventListener("click",function(){S.diag=QS.map(function(){return null;});renderQs();renderDiag();save();});
+$("d-example").addEventListener("click",function(){S.diag=EX_DIAG.slice();renderQs();renderDiag();save();});
+function head(){return (S.client?"企業様："+S.client+"\n":"")+"作成日："+fmt(TODAY)+"\n";}
+$("d-copy").addEventListener("click",function(){var r=diagResult();
+  copyText("【2号移行・人事制度 現状診断】\n"+head()+"総合点："+r.score+"／30点（"+r.answered+"／15問回答）\n準備度："+r.rank+"\n\n分野ごとの達成率\n"+r.cats.map(function(c){return "・"+c[0]+"："+Math.round(c[1]/6*100)+"%";}).join("\n")+"\n\n優先して取り組むこと\n"+(r.acts.length?r.acts.map(function(a,i){return (i+1)+". "+a[1];}).join("\n"):"なし"));});
+
+/* ---------- ② 候補者 ---------- */
+var CF=["name","start","tokkatsu","excl","mgmt","prior","gap","exam","score","examdate","trainees","apply"],CB=["basic","temp","duty","pay","council","plan"];
+function sliders(el,names,key,prefix){
+  el.innerHTML=names.map(function(n,i){var id=prefix+i,v=S.cand[key][i];return '<label class="sl'+(v<S.set.min?' low':'')+'" for="'+id+'"><span>'+esc(n)+'</span><input id="'+id+'" type="range" min="1" max="5" step="1" value="'+v+'"><output class="num" for="'+id+'" id="'+id+'-o">'+v+'</output></label>';}).join("");
+  names.forEach(function(n,i){var inp=$(prefix+i);inp.addEventListener("input",function(){S.cand[key][i]=+inp.value;$(prefix+i+"-o").textContent=inp.value;inp.parentNode.classList.toggle("low",+inp.value<S.set.min);renderCand();save();});});
+}
+function fillCand(){CF.forEach(function(k){$("c-"+k).value=S.cand[k]==null?"":S.cand[k];});CB.forEach(function(k){$("c-"+k).checked=!!S.cand[k];});
+  sliders($("skill-sl"),SKILL,"skill","sk");sliders($("mind-sl"),MIND,"mind","mi");
+  ["ws","wm","pass","min","margin"].forEach(function(k){$("s-"+k).value=S.set[k];});}
+CF.forEach(function(k){var el=$("c-"+k);["input","change"].forEach(function(ev){el.addEventListener(ev,function(){S.cand[k]=el.value;renderCand();save();});});});
+CB.forEach(function(k){var el=$("c-"+k);el.addEventListener("change",function(){S.cand[k]=el.checked;renderCand();save();});});
+["ws","wm","pass","min","margin"].forEach(function(k){var el=$("s-"+k);el.addEventListener("input",function(){var v=parseFloat(el.value);if(!isNaN(v)){S.set[k]=v;sliders($("skill-sl"),SKILL,"skill","sk");sliders($("mind-sl"),MIND,"mind","mi");renderCand();refreshRosterCalc();save();}});});
+$("s-reset").addEventListener("click",function(){S.set=clone(DEF_SET);fillCand();renderCand();refreshRosterCalc();save();});
+$("c-clear").addEventListener("click",function(){S.cand=clone(EMPTY_CAND);fillCand();renderCand();save();$("c-name").focus();});
+$("c-example").addEventListener("click",function(){S.cand=clone(EX_CAND);fillCand();renderCand();save();});
+
+function avg(a){return a.reduce(function(s,x){return s+x;},0)/a.length;}
+function evalCand(c,set){
+  var o={};
+  o.start=parseD(c.start);o.mgmt=parseD(c.mgmt);o.prior=num(c.prior);o.gap=num(c.gap);
+  o.limit=o.start?limitDate(o.start,num(c.excl),num(c.tokkatsu)):null;
+  var rd=reachDate(o.mgmt,o.prior,o.gap);o.reach=rd.date;o.reachDone=rd.done||(o.reach&&TODAY>=o.reach);
+  o.exp=expMonthsNow(o.mgmt,o.prior,o.gap);
+  o.margin=(o.limit&&o.reach)?monthsBetween(o.reach,o.limit):(o.limit&&rd.done?monthsBetween(TODAY,o.limit):null);
+  o.sk=avg(c.skill);o.mi=avg(c.mind);
+  var tw=(set.ws+set.wm)||100;o.total=Math.round((o.sk/5*set.ws+o.mi/5*set.wm)/tw*100);
+  o.minItem=Math.min.apply(null,c.skill.concat(c.mind));
+  o.examDate=parseD(c.examdate);
+  o.special=(c.exam==="fail"&&c.score!==""&&num(c.score)>=104);
+  o.specialLimit=o.limit?addMonths(o.limit,12):null;
+  o.applyDate=parseD(c.apply)||(c.exam==="pass"?maxD(TODAY,o.reach):maxD(o.reach,o.examDate));
+  o.trainees=Math.floor(num(c.trainees));
+  return o;
+}
+function timelineSVG(o){
+  if(!o.start||!o.limit)return '<p class="note">「1号の開始日」を入れると、期限の図が表示されます。</p>';
+  var end=o.special?o.specialLimit:o.limit,t0=o.start.getTime();
+  var t1=Math.max(end.getTime(),o.reach?o.reach.getTime():0,TODAY.getTime());
+  var L=14,R=546,span=(t1-t0)||1;var x=function(d){return L+(R-L)*Math.min(1,Math.max(0,(d.getTime()-t0)/span));};
+  var s='<svg viewBox="0 0 560 96" role="img" aria-label="1号の期間と実務2年の到達日の図">';
+  s+='<rect x="'+L+'" y="34" width="'+Math.max(2,x(o.limit)-L)+'" height="14" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>';
+  if(o.special)s+='<rect x="'+x(o.limit)+'" y="34" width="'+Math.max(2,x(o.specialLimit)-x(o.limit))+'" height="14" rx="4" fill="none" stroke="var(--warn)" stroke-dasharray="4 3"/><text x="'+Math.min(x(o.limit)+4,R-90)+'" y="62" font-size="11" fill="var(--warn)">6年特例（条件付き）</text>';
+  if(o.mgmt&&o.reach){var a=x(o.mgmt),b=x(o.reach);s+='<rect x="'+a+'" y="52" width="'+Math.max(2,b-a)+'" height="8" rx="3" fill="'+(o.margin!=null&&o.margin<0?'var(--bad)':'var(--accent)')+'"/>';
+    s+='<text x="'+Math.min(a,R-110)+'" y="76" font-size="11" fill="var(--muted)">管理役 '+fmt(o.mgmt)+'</text>';
+    s+='<line x1="'+b+'" y1="30" x2="'+b+'" y2="62" stroke="var(--ink)" stroke-width="1.5"/><text x="'+Math.min(Math.max(b-50,L),R-130)+'" y="92" font-size="11" fill="var(--ink)" font-weight="700">実務2年 '+fmt(o.reach)+'</text>';}
+  var tx=x(TODAY);s+='<line x1="'+tx+'" y1="18" x2="'+tx+'" y2="50" stroke="var(--mark)" stroke-width="2"/><text x="'+Math.min(Math.max(tx-14,L),R-40)+'" y="14" font-size="11" fill="var(--mark)" font-weight="700">今日</text>';
+  var lx=x(o.limit);s+='<text x="'+Math.min(Math.max(lx-90,L),R-160)+'" y="28" font-size="11" fill="var(--accent)" font-weight="700">1号の期限の目安 '+fmt(o.limit)+'</text></svg>';
+  return s;
+}
+function buildCand(c,set){
+  var o=evalCand(c,set),V=[],acts=[],alerts=[];
+  /* 期限の警告 */
+  var dv=deadlineVerdict(o.margin,set.margin);
+  if(o.limit&&o.limit<TODAY)alerts.push(["bad","<b>1号の期限の目安を過ぎています。</b>入力内容（特に開始日）を確認してください。"]);
+  else if(o.margin!=null&&o.margin<0)alerts.push(["bad","<b>1号の期限までに実務2年に届きません。</b>前職の経験・休業の除外・任命時期の見直しを、すぐに個別に相談してください。"]);
+  else if(o.margin!=null&&o.margin<set.margin)alerts.push(["warn","<b>期限までの余裕が"+o.margin+"か月です。</b>試験の予約と申請の日程を先に決めてください。"]);
+  if(o.applyDate&&o.applyDate>=B1_DATE)alerts.push(["warn","<b>申請が2027年4月以降になる見込みです。</b>2号の日本語B1相当の確認は、認定証明書の申請では2027年4月から必要、変更・更新の申請は検討中です。最新のお知らせを確認してください。"]);
+  if(o.examDate&&o.reach&&o.examDate<o.reach&&c.exam!=="pass"&&c.exam!=="fail")alerts.push(["bad","<b>受験日が実務2年の到達日より前です。</b>試験日の前日までに2年が必要なので、この日程では受験できません。"]);
+
+  /* 判断1 受験 */
+  var v1;
+  if(c.exam==="pass")v1={cls:"ok",tag:"合格済み",p:"2号評価試験に合格しています。在留申請は入管が別に審査します。",talk:"「試験は合格です。次は在留資格の変更申請の準備です」"};
+  else if(!o.mgmt&&!(o.prior>=24)){v1={cls:o.prior>0?"warn":"bad",tag:"まだ受験できない",p:"管理役（複数の作業員を指導しながら工程を管理）の経験が2年に届いていません"+(o.prior>0?"（前職の経験 "+o.prior+"か月）":"")+"。勤続年数は数えません。",talk:"「勤続年数ではなく、管理役としての経験を2年数えます」"};acts.push("班長・ライン長などに辞令で任命し、管理者相当の実務を始める");}
+  else if(o.reachDone){v1={cls:c.basic?"ok":"warn",tag:c.basic?"受験資格の見込みあり":"実務は到達・条件を確認",p:"管理役の経験が約"+o.exp+"か月で、2年に達しています。"+(c.basic?"":"受験の基本条件（在留資格・17歳以上・パスポート・企業登録）を確認してください。"),talk:"「実務の条件は満たしています。会社から試験を申し込みます」"};acts.push("実務経験証明書（前職の分も）を用意し、企業マイページから受験を申し込む");if(!c.basic)acts.push("受験の基本条件（在留資格・年齢・パスポート・企業登録）を確認する");}
+  else{var left=monthsBetween(TODAY,o.reach);v1={cls:o.margin!=null&&o.margin<0?"bad":"warn",tag:fmt(o.reach)+" から受験可",p:"試験日の前日までに実務2年が必要です（見込みでの受験は不可）。あと約"+left+"か月です。",talk:"「"+fmt(o.reach)+"以降の試験日なら受験できます」"};acts.push("実務2年に届くまで、指導と工程管理の記録を毎月残す");}
+  if(c.exam==="booked")v1.p+=" 試験は予約済みです。";
+  if(c.exam==="fail"){
+    if(o.special&&o.limit){v1.p+=" 不合格でも合格基準点の8割（104点）以上のため、条件を満たせば1号を通算6年まで延ばせる特例の対象になり得ます。申請は1号の通算5年が満了する3か月前（"+fmt(addMonths(o.limit,-3))+"ごろ）から満了までです。";v1.talk="「6年特例は自動ではありません。本人の誓約と会社の支援体制が必要です」";acts.push("再受験の日程を決め、6年特例の要件（本人の誓約・会社の支援体制）を確認する");}
+    else if(c.score!==""){v1.p+=" 得点が104点未満のため、6年特例の対象外です。";acts.push("再受験に向けた学習計画を立てる");}
+    else v1.p+=" 得点を入れると6年特例の対象か確認できます。";
+  }
+  V.push({who:"判断1：受験できるか（試験実施機関）",v:v1});
+
+  /* 判断2 社内 */
+  var passScore=o.total>=set.pass,passMin=o.minItem>=set.min,tOK=o.trainees>=2,tTemp=!tOK&&c.temp&&o.trainees>=0,v2;
+  if(passScore&&passMin&&(tOK||tTemp)&&c.duty)v2={cls:"ok",tag:"推薦候補",p:"総合"+o.total+"点（目安"+set.pass+"点）で、全項目が"+set.min+"点以上です。管理役の実態もあります。最終的には面談で推薦するかを決めます。",talk:"「社内基準では推薦候補です。最後は面談で決めましょう」"};
+  else if(passScore&&passMin)v2={cls:"warn",tag:"体制の整備が必要",p:"社内評価は基準を満たしていますが、指導対象者や職務の実態が足りません。",talk:"「評価は十分です。2名以上を指導できる配置を一緒に考えましょう」"};
+  else if(passScore)v2={cls:"warn",tag:"育成対象（弱点あり）",p:"総合"+o.total+"点ですが、"+set.min+"点未満の項目があります。その項目を次の半期の目標にします。",talk:"「総合点は届いています。弱い項目を改善してから再評価しましょう」"};
+  else v2={cls:o.total>=set.pass-10?"warn":"bad",tag:"1号として育成",p:"総合"+o.total+"点で、目安の"+set.pass+"点に届いていません。",talk:"「今すぐではなく、育成の計画を立ててから判断しましょう」"};
+  v2.list=[(tOK?"✓ ":"✗ ")+"指導対象者 "+(c.trainees===""?"未入力":o.trainees+"名")+"（2名以上）"+(tTemp?"／一時的な不足として誓約書に理由を記載":""),(c.duty?"✓ ":"✗ ")+"1号・実習生とは違う職務を実際に担当","スキル平均 "+o.sk.toFixed(1)+"／マインド平均 "+o.mi.toFixed(1)+"／最低 "+o.minItem+"点"];
+  if(!passMin){var weak=[];c.skill.forEach(function(v,i){if(v<set.min)weak.push(SKILL[i]);});c.mind.forEach(function(v,i){if(v<set.min)weak.push(MIND[i]);});acts.push("弱い項目（"+weak.join("・")+"）を次の半期の目標にし、3か月後に再評価する");}
+  if(!tOK&&!tTemp)acts.push("同じ事業所・部署で2名以上を指導できるよう配置を見直す");
+  if(!c.duty)acts.push("職務分掌表で1号との違いを決め、実際の担当業務を切り替える（さかのぼって作らない）");
+  V.push({who:"判断2：管理役を任せられるか（会社の判断）",v:v2});
+
+  /* 判断3 申請 */
+  var items=[[c.exam==="pass","2号評価試験に合格"],[!!o.reachDone,"管理者相当の実務経験2年以上（証明書あり）"],[tOK||tTemp,"指導対象者2名以上（一時的な不足は理由を記載）"],[!!c.duty,"誓約書の職務内容が実態と一致"],[!!c.pay,"日本人と同等以上の報酬"],[!!c.council,"食品産業特定技能協議会に加入"],[!!c.plan,"キャリアアッププランを書面で説明"]];
+  var miss=items.filter(function(x){return !x[0];});
+  var v3=miss.length===0?{cls:"ok",tag:"申請の準備が整っている",p:"書類をそろえて在留資格の変更を申請できます。許可するかどうかは入管の審査で決まります。",talk:"「準備はそろいました。書類は行政書士と一緒に作ります」"}:{cls:miss.length<=2?"warn":"bad",tag:"不足 "+miss.length+"件",p:"次の点がそろうまで申請の準備は終わりません。",talk:"「不足している点を、期限から逆算して一つずつ進めましょう」"};
+  v3.list=items.map(function(x){return (x[0]?"✓ ":"✗ ")+x[1];});
+  if(!c.pay)acts.push("比較対象の日本人の等級と給与を確認し、報酬をそろえる");
+  if(!c.council)acts.push("食品産業特定技能協議会への加入を確認する");
+  if(!c.plan)acts.push("キャリアアッププラン（等級テーブル）を書面で用意する");
+  if(miss.length===0)acts.push("提携の行政書士と、誓約書（参考様式第1-32号）などの申請書類を準備する");
+  V.push({who:"判断3：在留申請の準備（出入国在留管理庁が審査）",v:v3});
+
+  if(o.margin!=null&&o.margin<set.margin)acts.unshift(o.margin<0?"1号の期限までに実務2年に届かないため、すぐに個別に相談する":"期限までの余裕が少ないため、試験と申請の日程を先に決める");
+  var miss2=[];if(!c.start)miss2.push("1号の開始日");if(!c.mgmt&&!c.prior)miss2.push("管理役を始めた日");if(c.trainees==="")miss2.push("指導している人数");
+  if(miss2.length)acts.push("聞き取りが必要："+miss2.join("・"));
+  var seen={};acts=acts.filter(function(a){if(seen[a])return false;seen[a]=1;return true;});
+  return {o:o,V:V,acts:acts,alerts:alerts,dv:dv};
+}
+function renderCand(){
+  var c=S.cand,R=buildCand(c,S.set),o=R.o;
+  $("c-skill").textContent=o.sk.toFixed(1);$("c-mind").textContent=o.mi.toFixed(1);
+  $("r-title").textContent=(c.name||"候補者")+" の判定結果";
+  $("r-alerts").innerHTML=R.alerts.map(function(a){return '<div class="alert '+a[0]+'">'+a[1]+'</div>';}).join("");
+  $("r-timeline").innerHTML=timelineSVG(o);
+  $("r-kv").innerHTML='<dt>1号の期限の目安</dt><dd class="num">'+fmt(o.limit)+'</dd><dt>管理役の経験（今日時点）</dt><dd class="num">'+(o.mgmt||o.prior?o.exp+"か月":"未入力")+'</dd><dt>実務2年の到達日</dt><dd class="num">'+(o.reach?fmt(o.reach):(o.reachDone?"到達済み":"—"))+'</dd><dt>期限までの余裕</dt><dd><span class="num">'+(o.margin==null?"—":o.margin+"か月")+'</span> <span class="pill '+R.dv.cls+'">'+R.dv.txt+'</span></dd><dt>社内評価の総合点</dt><dd class="num">'+o.total+'点（目安 '+S.set.pass+'点）</dd>';
+  $("r-verdicts").innerHTML=R.V.map(function(x){var v=x.v;return '<div class="verdict '+v.cls+'"><div class="t"><b>'+esc(x.who)+'</b><span class="pill '+v.cls+'">'+esc(v.tag)+'</span></div><p>'+esc(v.p)+'</p>'+(v.list?'<ul>'+v.list.map(function(l){return '<li>'+esc(l)+'</li>';}).join("")+'</ul>':'')+(v.talk?'<div class="talk">伝え方：'+esc(v.talk)+'</div>':'')+'</div>';}).join("");
+  $("r-actions").innerHTML=R.acts.length?R.acts.map(function(a){return '<li>'+esc(a)+'</li>';}).join(""):'<li class="note">特にありません。</li>';
+  renderCand._last=R;
+}
+$("c-copy").addEventListener("click",function(){var R=renderCand._last,c=S.cand,o=R.o;
+  copyText("【特定技能2号 移行チェック】"+(c.name?" "+c.name:"")+"\n"+head()+"1号の期限の目安："+fmt(o.limit)+"\n実務2年の到達日："+(o.reach?fmt(o.reach):(o.reachDone?"到達済み":"—"))+"\n期限までの余裕："+(o.margin==null?"—":o.margin+"か月（"+R.dv.txt+"）")+"\n社内評価：総合"+o.total+"点（スキル平均"+o.sk.toFixed(1)+"・マインド平均"+o.mi.toFixed(1)+"・最低"+o.minItem+"点）\n"+
+   (R.alerts.length?"\n注意\n"+R.alerts.map(function(a){return "・"+a[1].replace(/<[^>]+>/g,"");}).join("\n")+"\n":"")+"\n"+
+   R.V.map(function(x){return "■"+x.who+"："+x.v.tag+"\n"+x.v.p+(x.v.list?"\n"+x.v.list.join("\n"):"");}).join("\n\n")+
+   "\n\n次にやること\n"+R.acts.map(function(a,i){return (i+1)+". "+a;}).join("\n")+"\n\n※許可するかどうかは出入国在留管理庁の審査で決まります。");});
+$("c-toroster").addEventListener("click",function(){var c=S.cand;S.roster.push({name:c.name||"（名前未入力）",start:c.start,mgmt:c.mgmt,prior:String(c.prior||""),exam:c.exam==="booked"?"none":c.exam,trainees:""});renderRoster();save();toast("一覧に追加しました");});
+
+/* ---------- ③ 一覧 ---------- */
+var EXAMS={none:"未受験・予約",pass:"合格",fail:"不合格"};
+function splitNames(s){return String(s||"").split(/[、,，\n]/).map(function(x){return x.trim();}).filter(Boolean);}
+function rosterCalc(){
+  var count={};S.roster.forEach(function(r){splitNames(r.trainees).forEach(function(n){count[n]=(count[n]||0)+1;});});
+  return S.roster.map(function(r){
+    var st=parseD(r.start),mg=parseD(r.mgmt),prior=num(r.prior),lim=st?limitDate(st,0,0):null,rd=reachDate(mg,prior,0),reach=rd.date;
+    var margin=(lim&&reach)?monthsBetween(reach,lim):(lim&&rd.done?monthsBetween(TODAY,lim):null);
+    var names=splitNames(r.trainees),dup=names.filter(function(n){return count[n]>1;});
+    var tv=names.length===0?{cls:"info",txt:"未入力"}:names.length<2?{cls:"bad",txt:names.length+"名（2名未満）"}:dup.length?{cls:"warn",txt:"重複："+dup.join("・")+"（要確認）"}:{cls:"ok",txt:names.length+"名 OK"};
+    return {lim:lim,reach:reach,done:rd.done,margin:margin,dv:deadlineVerdict(margin,S.set.margin),tv:tv};
+  });
+}
+function renderRoster(){
+  var calc=rosterCalc();
+  $("ro-body").innerHTML=S.roster.length?S.roster.map(function(r,i){var k=calc[i];
+    return '<tr><td><input aria-label="氏名" data-i="'+i+'" data-k="name" value="'+esc(r.name)+'"></td>'+
+    '<td><input aria-label="1号の開始日" type="date" data-i="'+i+'" data-k="start" value="'+esc(r.start)+'"></td>'+
+    '<td><input aria-label="管理役の開始日" type="date" data-i="'+i+'" data-k="mgmt" value="'+esc(r.mgmt)+'"></td>'+
+    '<td><input aria-label="前職の管理経験" type="number" min="0" data-i="'+i+'" data-k="prior" value="'+esc(r.prior)+'" style="min-width:4.5em"></td>'+
+    '<td><select aria-label="2号試験" data-i="'+i+'" data-k="exam">'+Object.keys(EXAMS).map(function(x){return '<option value="'+x+'"'+(r.exam===x?' selected':'')+'>'+EXAMS[x]+'</option>';}).join("")+'</select></td>'+
+    '<td><input aria-label="指導対象者" data-i="'+i+'" data-k="trainees" value="'+esc(r.trainees)+'" style="min-width:12em"></td>'+
+    '<td class="calc num">'+(k.reach?fmt(k.reach):(k.done?"到達済み":"—"))+'</td><td class="calc num">'+fmt(k.lim)+'</td><td class="calc num">'+(k.margin==null?"—":k.margin+"か月")+'</td>'+
+    '<td><span class="pill '+k.dv.cls+'">'+esc(k.dv.txt)+'</span></td><td><span class="pill '+k.tv.cls+'">'+esc(k.tv.txt)+'</span></td>'+
+    '<td style="white-space:nowrap"><button class="btn small" type="button" data-open="'+i+'">詳しく</button> <button class="del" type="button" data-del="'+i+'" aria-label="この行を削除">×</button></td></tr>';}).join("")
+    :'<tr><td colspan="12" class="note">候補者がいません。「候補者を追加」か「記入例を入れる」を押してください。</td></tr>';
+}
+function refreshRosterCalc(){var calc=rosterCalc(),rows=$("ro-body").querySelectorAll("tr");if(!S.roster.length)return;
+  rows.forEach(function(tr,i){var k=calc[i],td=tr.children;if(!k)return;td[6].textContent=k.reach?fmt(k.reach):(k.done?"到達済み":"—");td[7].textContent=fmt(k.lim);td[8].textContent=k.margin==null?"—":k.margin+"か月";
+    td[9].innerHTML='<span class="pill '+k.dv.cls+'">'+esc(k.dv.txt)+'</span>';td[10].innerHTML='<span class="pill '+k.tv.cls+'">'+esc(k.tv.txt)+'</span>';});}
+function onRo(e){var t=e.target;if(t.dataset.i==null)return;S.roster[+t.dataset.i][t.dataset.k]=t.value;refreshRosterCalc();save();}
+$("ro-body").addEventListener("input",onRo);$("ro-body").addEventListener("change",onRo);
+$("ro-body").addEventListener("click",function(e){
+  var d=e.target.closest("button[data-del]");if(d){S.roster.splice(+d.dataset.del,1);renderRoster();save();return;}
+  var op=e.target.closest("button[data-open]");if(op){var r=S.roster[+op.dataset.open];S.cand=clone(EMPTY_CAND);S.cand.name=r.name;S.cand.start=r.start;S.cand.mgmt=r.mgmt;S.cand.prior=r.prior;S.cand.exam=r.exam;S.cand.trainees=String(splitNames(r.trainees).length||"");fillCand();renderCand();save();location.hash="candidate";}
+});
+$("ro-add").addEventListener("click",function(){S.roster.push({name:"",start:"",mgmt:"",prior:"",exam:"none",trainees:""});renderRoster();save();var ins=$("ro-body").querySelectorAll("tr:last-child input");if(ins[0])ins[0].focus();});
+$("ro-example").addEventListener("click",function(){S.roster=clone(EX_ROSTER);renderRoster();save();});
+$("ro-clear").addEventListener("click",function(){S.roster=[];renderRoster();save();});
+$("ro-sort").addEventListener("click",function(){var calc=rosterCalc();var idx=S.roster.map(function(r,i){return i;});idx.sort(function(a,b){var x=calc[a].margin,y=calc[b].margin;if(x==null)return 1;if(y==null)return -1;return x-y;});S.roster=idx.map(function(i){return S.roster[i];});renderRoster();save();});
+$("ro-copy").addEventListener("click",function(){var calc=rosterCalc();
+  var lines=[["氏名","1号の開始日","管理役の開始日","前職の管理経験（か月）","2号試験","指導対象者","実務2年の到達日","1号の期限の目安","余裕（か月）","期限の判定","指導対象者の判定"].join("\t")];
+  S.roster.forEach(function(r,i){var k=calc[i];lines.push([r.name,r.start,r.mgmt,r.prior,EXAMS[r.exam],r.trainees,k.reach?fmt(k.reach):(k.done?"到達済み":""),fmt(k.lim),k.margin==null?"":k.margin,k.dv.txt,k.tv.txt].join("\t"));});
+  copyText(lines.join("\n"));});
+
+/* ---------- ④ 制度 ---------- */
+var RULES=[
+ ["2号の受験資格（実務経験）","試験日の前日までに、管理者相当（複数の作業員を指導しながら作業に従事し、工程を管理する者）の実務経験が2年以上必要です。2026年5月1日から、見込みでの受験はできません。技能実習や他分野の経験は数えません。複数の会社の経験は通算でき、会社ごとに実務経験証明書を作ります。","勤続年数とは別に数えます。辞令・配置表・班長日報などで「いつから管理役か」を示せるようにします。","農林水産省 食品産業分野の特定技能2号Q&A（令和8年8月）","https://www.maff.go.jp/j/shokusan/gaisyoku/attach/pdf/gaikokujinzai-117.pdf"],
+ ["受験の基本条件と申込み","試験日に在留資格を持っていること、試験日に17歳以上であること、対象国・地域のパスポートを持っていることなどが条件です。働いている1号の受験は、現時点では企業からの申込みのみです。","企業マイページの登録が先に必要です。登録に時間がかかるので、候補者が決まったら早めに進めます。","プロメトリック 飲食料品製造業特定技能2号評価試験","https://www.prometric-jp.com/en/ssw/test_list/archives/20"],
+ ["2号評価試験の合格基準","200点満点で、合格基準点は130点です。","試験に合格しても在留許可ではありません。在留申請は入管が別に審査します。","出入国在留管理庁 試験結果通知書サンプル","https://www.moj.go.jp/isa/content/001446654.pdf"],
+ ["業務内容に関する誓約書","2026年8月20日以降の2号の在留申請では、誓約書（参考様式第1-32号）が必要です。職務内容、技能実習生・1号との違い、指導対象者を記載します。","実態と一致していることが前提です。申請のときだけの職務や、肩書きだけの班長は認められません。書類の作成は行政書士の業務です。","出入国在留管理庁 特定技能外国人受入れに関する運用要領（令和8年10月）","https://www.moj.go.jp/isa/content/001468647.pdf"],
+ ["指導対象者の人数と範囲","飲食料品製造業は2名以上が必要です。原則は2号と同じ事業所に出勤し、同じ部署に所属する人です。就業場所が複数ある場合などは、別の事業所・部署でも柔軟に扱われます（Q&A Q104）。","まず同じ班・同じラインの人を割り当てます。例外を使うときは理由を説明できるようにします。","出入国在留管理庁 特定技能制度Q&A","https://www.moj.go.jp/isa/policies/ssw/faq.html"],
+ ["指導対象者の重複（10月19日改正）","他の2号から指導を受けている人も、専門性の異なる2号が同じ人を指導する場合など、合理的な理由があれば指導対象者に含められます。","このツールの「重複」は要確認の目印です。理由を説明できなければ、別の人を割り当てます。","出入国在留管理庁 運用要領の一部改正（令和8年10月19日）","https://www.moj.go.jp/isa/content/001473024.pdf"],
+ ["指導対象者の一時的な不足","採用中で未確定、離職・休職などで一時的に足りない場合は、誓約書の留意事項5にチェックし、理由を書いて提出します（Q&A Q102・Q103）。","「一時的」に限られます。いつも1名しかいない体制は対象外なので、配置を見直します。","出入国在留管理庁 特定技能制度Q&A","https://www.moj.go.jp/isa/policies/ssw/faq.html"],
+ ["1号の通算在留期間","1号は原則5年までです。就労していない期間、再入国許可で出国していた期間、1号への移行を希望する場合の特定活動の期間も通算に含みます。","正確な期間は出入国記録の開示請求で確認できます（窓口・電話では算定しません）。","出入国在留管理庁 通算在留期間","https://www.moj.go.jp/isa/10_00233.html"],
+ ["通算に含めない期間","産前産後・育児休業、病気・けがによる休業（原則1年以下、労災は3年以下、連続して1か月を超える場合）などは、通算5年が満了する3か月前から満了までに、疎明資料を付けて申請すれば除外されます。","自動では除外されません。診断書や出勤簿など、休業の記録を残しておきます。","出入国在留管理庁 通算在留期間","https://www.moj.go.jp/isa/10_00233.html"],
+ ["2号試験不合格者の特例（最長6年）","必要な試験すべてで合格基準点の8割以上（104点以上）を取り、本人が受験の継続などを誓約し、会社に継続雇用の意思と合格に向けた支援体制がある場合、通算6年を上限に許可されることがあります。申請は満了の3か月前から満了までです。","自動延長ではありません。受験していない人は対象外なので、早めに受験させます。","出入国在留管理庁 通算在留期間","https://www.moj.go.jp/isa/10_00233.html"],
+ ["2号の日本語要件（B1相当）","在留資格認定証明書交付申請では、2027年4月1日以降の申請にB1相当以上が必要です。変更・更新の申請は検討中とされています。","社内のN2・N3などの基準とは分けて考えます。今後のお知らせを確認します。","出入国在留管理庁 日本語能力水準B1相当以上の確認開始時期","https://www.moj.go.jp/isa/03_00198.html"],
+ ["キャリアアッププランと受入れ機関の条件","受入れ機関は、キャリアアッププランのイメージを設定し、雇用契約を結ぶ前に書面で説明します。食品産業特定技能協議会への加入は2号でも必要で、報酬は日本人と同等以上です。","等級テーブルと評価の仕組みを、そのまま説明資料に使えます。","出入国在留管理庁 飲食料品製造業分野","https://www.moj.go.jp/isa/policies/ssw/foodandbeverages.html"],
+ ["年休・病気と評価","年休の取得を賞与・昇給の査定でマイナスに扱うことは許されません（労働基準法附則第136条）。","勤怠の評価では年休を出勤として扱います。体調不良を申告して食品の取扱いを控えたことは、衛生上正しい行動として評価します。","厚生労働省 年休取得の不利益取扱い","https://www.mhlw.go.jp/bunya/roudoukijun/faq_kijyunhou_15.html"],
+ ["2027年4月からの変更（参考）","技能実習を良好に修了していても、1号への移行には技能試験と日本語試験の両方の合格が必要になります。また「飲食料品製造業全般」は「飲食料品製造業」と「水産加工業」の2区分に分かれます。","実習からの移行を前提にした見極めの計画と、職務の書き方に影響します。","出入国在留管理庁 特定技能1号への移行の取扱い変更","https://www.moj.go.jp/isa/10_00262.html"]
+];
+$("rules").innerHTML=RULES.map(function(r,i){return '<details class="rule"'+(i<2?' open':'')+'><summary><span class="n">'+String(i+1).padStart(2,"0")+'</span><span>'+esc(r[0])+'</span></summary><p>'+esc(r[1])+'</p><p><b>実務での注意：</b>'+esc(r[2])+'</p><p class="src">出典：<a href="'+r[4]+'" target="_blank" rel="noopener">'+esc(r[3])+'</a></p></details>';}).join("");
+
+/* ---------- 保存ダイアログ ---------- */
+var dlg=$("dlg");
+function encode(){try{return btoa(unescape(encodeURIComponent(JSON.stringify(S))));}catch(e){return "";}}
+function decode(t){return JSON.parse(decodeURIComponent(escape(atob(t.trim()))));}
+$("g-data").addEventListener("click",function(){$("dlg-out").value=encode();$("dlg-in").value="";$("dlg-err").textContent="";$("dlg-auto").textContent=canStore?"入力内容はこのブラウザに自動で保存されています。別のパソコンで使うときや、企業様ごとに分けて残すときは、書き出してください。":"この環境では自動保存ができません。打合せの前後に、書き出して保存してください。";
+  if(dlg.showModal)dlg.showModal();else dlg.setAttribute("open","");});
+$("dlg-close").addEventListener("click",function(){dlg.close?dlg.close():dlg.removeAttribute("open");});
+$("dlg-copy").addEventListener("click",function(){copyText($("dlg-out").value);});
+$("dlg-load").addEventListener("click",function(){try{var o=decode($("dlg-in").value);if(!o||o.v!==2)throw 0;S=merge(o);renderAll();save();dlg.close?dlg.close():dlg.removeAttribute("open");toast("読み込みました");}catch(e){$("dlg-err").textContent="読み込めませんでした。書き出した文字をすべて、そのまま貼り付けてください。";}});
+$("dlg-new").addEventListener("click",function(){S={v:2,client:"",diag:QS.map(function(){return null;}),cand:clone(EMPTY_CAND),roster:[],set:clone(DEF_SET)};renderAll();save();dlg.close?dlg.close():dlg.removeAttribute("open");toast("すべて消しました");});
+$("g-client").addEventListener("input",function(){S.client=$("g-client").value;save();});
+
+/* ---------- タブ ---------- */
+var VIEWS=["start","diagnosis","candidate","roster","rules"];
+function show(){var h=location.hash.replace("#","");if(VIEWS.indexOf(h)<0)h="start";
+  VIEWS.forEach(function(v){$("view-"+v).classList.toggle("on",v===h);});
+  document.querySelectorAll("nav.tabs a").forEach(function(a){if(a.dataset.view===h)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});window.scrollTo(0,0);}
+window.addEventListener("hashchange",show);
+function renderAll(){$("g-client").value=S.client;renderQs();renderDiag();fillCand();renderCand();renderRoster();}
+
+load();renderAll();save();show();
+window.__t={limitDate:limitDate,reachDate:reachDate,buildCand:buildCand,EX_CAND:EX_CAND,DEF_SET:DEF_SET,rosterCalc:rosterCalc,S:function(){return S;}};
+})();
+</script>
+</body>
+</html>
